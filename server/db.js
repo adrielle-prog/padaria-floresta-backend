@@ -13,18 +13,14 @@ if (isPg) {
     ssl: { rejectUnauthorized: false }
   });
   console.log('Connected to PostgreSQL database in the cloud');
-  initializeDatabase();
 } else {
   const dbPath = path.join(__dirname, 'sales.db');
   db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-      console.error('Error opening database:', err.message);
-    } else {
-      console.log('Connected to SQLite database at:', dbPath);
-      initializeDatabase();
-    }
+    if (err) console.error('Error opening database:', err.message);
+    else console.log('Connected to SQLite database at:', dbPath);
   });
 }
+
 
 // Enable foreign keys for SQLite
 if (!isPg && db) {
@@ -73,6 +69,9 @@ const dbRun = (sql, params = []) => {
     );
   }
 };
+
+// Kick off DB initialization after all helpers are defined
+setImmediate(() => initializeDatabase());
 
 async function runTransaction(fn) {
   if (isPg) {
