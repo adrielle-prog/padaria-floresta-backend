@@ -7,6 +7,8 @@ const ROLES = [
   { value: 'estoque', label: '📦 Operador de Estoque', desc: 'Estoque + Relatórios' },
 ];
 
+const API_BASE = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000`;
+
 const EMPTY_FORM = { name: '', username: '', password: '', confirmPassword: '', role: 'caixa' };
 
 export default function UserManager() {
@@ -27,7 +29,7 @@ export default function UserManager() {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const res = await authFetch(`http://${window.location.hostname}:5000/api/users`);
+      const res = await authFetch(`${API_BASE}/api/users`);
       setUsers(await res.json());
     } catch { showToast('error', 'Erro ao carregar usuários.'); }
     finally { setLoading(false); }
@@ -57,8 +59,7 @@ export default function UserManager() {
     if (form.password && form.password !== form.confirmPassword) return setFormErr('Senhas não coincidem.');
     if (form.password && form.password.length < 6) return setFormErr('Senha deve ter ao menos 6 caracteres.');
 
-    const API = `http://${window.location.hostname}:5000`;
-    const url    = editing ? `${API}/api/users/${editing.id}` : `${API}/api/users`;
+    const url    = editing ? `${API_BASE}/api/users/${editing.id}` : `${API_BASE}/api/users`;
     const method = editing ? 'PUT' : 'POST';
     const body   = { name: form.name.trim(), username: form.username.trim(), role: form.role };
     if (form.password) body.password = form.password;
@@ -74,9 +75,8 @@ export default function UserManager() {
   };
 
   const handleToggle = async (u) => {
-    const API = `http://${window.location.hostname}:5000`;
     try {
-      await authFetch(`${API}/api/users/${u.id}/toggle`, { method: 'PUT' });
+      await authFetch(`${API_BASE}/api/users/${u.id}/toggle`, { method: 'PUT' });
       showToast('success', u.is_active ? 'Usuário desativado.' : 'Usuário ativado.');
       loadUsers();
     } catch { showToast('error', 'Erro ao alterar status.'); }

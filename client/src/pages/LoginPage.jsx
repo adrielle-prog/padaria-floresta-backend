@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import ServerWakeUp from '../components/ServerWakeUp';
 
 const ROLE_LABELS = { gerente: '👑 Gerente', caixa: '🛒 Caixa', estoque: '📦 Estoque' };
 
@@ -10,6 +11,7 @@ export default function LoginPage() {
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
   const [showPass, setShowPass] = useState(false);
+  const [serverReady, setServerReady] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,6 +29,8 @@ export default function LoginPage() {
 
   return (
     <div className="login-shell">
+      {/* Cold-start wake-up screen */}
+      <ServerWakeUp onReady={() => setServerReady(true)} />
       {/* Animated background */}
       <div className="login-bg">
         <div className="login-bg-orb login-bg-orb--1" />
