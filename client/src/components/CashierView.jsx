@@ -206,8 +206,10 @@ export default function CashierView({ onSaleComplete }) {
         <div className="receipt-overlay">
           <div className="receipt-box" id="print-area">
             <div className="receipt-header">
-              <div className="receipt-logo">🥖</div>
-              <h2>PADARIA</h2>
+              <div className="receipt-logo">
+                <img src="/logo.png" alt="Logo Padaria Floresta" style={{ height: '50px', objectFit: 'contain' }} />
+              </div>
+              <h2>PADARIA FLORESTA</h2>
               <p>Obrigado pela preferência!</p>
               <div className="receipt-divider" />
               <p className="receipt-meta">
@@ -597,7 +599,7 @@ export default function CashierView({ onSaleComplete }) {
         .receipt-overlay { display: flex; flex-direction: column; align-items: center; gap: 1.25rem; padding: 1rem 0; }
         .receipt-box { background: #fff; color: #111; border-radius: var(--r-md); padding: 1.5rem 1.75rem; max-width: 360px; width: 100%; box-shadow: var(--shadow-lg); font-size: .9rem; line-height: 1.5; }
         .receipt-header { text-align: center; margin-bottom: .5rem; }
-        .receipt-logo { font-size: 2.5rem; }
+        .receipt-logo { display: flex; justify-content: center; margin-bottom: .4rem; }
         .receipt-header h2 { font-size: 1.2rem; letter-spacing: .1em; color: #111; margin: .2rem 0; }
         .receipt-header p { font-size: .8rem; color: #555; }
         .receipt-meta { font-size: .78rem; color: #555; margin-top: .4rem; }
