@@ -1,4 +1,8 @@
 const nodemailer = require('nodemailer');
+const { setDefaultResultOrder } = require('dns');
+
+// Force IPv4 DNS resolution - Render free tier does not support IPv6 outbound
+setDefaultResultOrder('ipv4first');
 
 /**
  * Envia um e-mail de recuperação de senha.
