@@ -232,6 +232,9 @@ async function initializeDatabase() {
           used INTEGER DEFAULT 0
         )`;
     await dbRun(resetTokensSchema);
+    try {
+      await dbRun("UPDATE users SET email = ? WHERE username = ?", ["j.jmotoboy@hotmail.com", "admin"]);
+    } catch (e) {}
 
     // Seed initial products if table is empty
     const prodCount = await dbGet("SELECT COUNT(*) as count FROM products");
