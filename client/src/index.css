@@ -999,5 +999,19 @@ select.form-control option {
   }
   .tab-nav {
     display: flex;
+    overflow-x: auto;
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+  .tab-nav::-webkit-scrollbar {
+    display: none;
+  }
+  @media (max-width: 576px) {
+    .tab-btn span {
+      display: none;
+    }
+    .tab-btn {
+      padding: 0.55rem 0.85rem;
+    }
   }
 }

@@ -69,8 +69,14 @@ export function AuthProvider({ children }) {
   const isCaixa   = user?.role === 'caixa' || isGerente;
   const isEstoque = user?.role === 'estoque' || isGerente;
 
+  const updateCurrentUser = useCallback((updatedUser) => {
+    const newUser = { ...user, ...updatedUser };
+    localStorage.setItem(USER_KEY, JSON.stringify(newUser));
+    setUser(newUser);
+  }, [user]);
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, authFetch, isGerente, isCaixa, isEstoque }}>
+    <AuthContext.Provider value={{ user, token, login, logout, authFetch, isGerente, isCaixa, isEstoque, updateCurrentUser }}>
       {children}
     </AuthContext.Provider>
   );

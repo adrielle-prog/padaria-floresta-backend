@@ -9,6 +9,8 @@ import LowStockPanel from './components/LowStockPanel';
 import UserManager from './components/UserManager';
 import ReportsView from './components/ReportsView';
 import LoginPage from './pages/LoginPage';
+import SettingsView from './components/SettingsView';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Tab identifiers
@@ -18,6 +20,7 @@ const TABS = {
   DASHBOARD: 'dashboard',
   REPORTS: 'relatorios',
   USERS: 'usuarios',
+  SETTINGS: 'configuracoes',
 };
 
 function AppContent() {
@@ -134,6 +137,15 @@ function AppContent() {
     setSelectedSaleProduct(prod);
   };
 
+  // Detect reset token in URL
+  const [resetToken] = useState(() => {
+    return new URLSearchParams(window.location.search).get('token');
+  });
+
+  if (resetToken) {
+    return <ResetPasswordPage token={resetToken} />;
+  }
+
   // If not logged in, render the login page
   if (!user) {
     return <LoginPage />;
@@ -210,6 +222,13 @@ function AppContent() {
               <span className="sidebar-nav-icon">👥</span> <span>Usuários</span>
             </button>
           )}
+          <button
+            id="sidebar-tab-configuracoes"
+            className={`sidebar-nav-btn ${activeTab === TABS.SETTINGS ? 'sidebar-nav-btn--active' : ''}`}
+            onClick={() => setActiveTab(TABS.SETTINGS)}
+          >
+            <span className="sidebar-nav-icon">⚙️</span> <span>Configurações</span>
+          </button>
         </nav>
 
         {/* Sidebar Footer & profile */}
@@ -295,6 +314,14 @@ function AppContent() {
                 👥 <span>Usuários</span>
               </button>
             )}
+            <button
+              id="tab-configuracoes"
+              className={`tab-btn ${activeTab === TABS.SETTINGS ? 'tab-btn--active' : ''}`}
+              onClick={() => setActiveTab(TABS.SETTINGS)}
+              aria-selected={activeTab === TABS.SETTINGS}
+            >
+              ⚙️ <span>Ajustes</span>
+            </button>
           </nav>
 
           {/* Mobile Profile & Logout */}
@@ -398,6 +425,17 @@ function AppContent() {
                     <p className="tab-panel__sub">Gerencie credenciais de acesso, perfis e permissões.</p>
                   </div>
                   <UserManager />
+                </div>
+              )}
+
+              {/* ABA 6 — CONFIGURAÇÕES */}
+              {activeTab === TABS.SETTINGS && (
+                <div className="tab-panel">
+                  <div className="tab-panel__header">
+                    <h2 className="tab-panel__title">⚙️ Configurações</h2>
+                    <p className="tab-panel__sub">Gerencie seus dados de acesso e senha.</p>
+                  </div>
+                  <SettingsView />
                 </div>
               )}
             </>

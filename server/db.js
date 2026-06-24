@@ -214,6 +214,24 @@ async function initializeDatabase() {
 
     await dbRun(sessionsSchema);
     await dbRun(usersSchema);
+    try { await dbRun("ALTER TABLE users ADD COLUMN email TEXT"); } catch (e) {}
+
+    const resetTokensSchema = isPg
+      ? `CREATE TABLE IF NOT EXISTS password_reset_tokens (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          token TEXT UNIQUE NOT NULL,
+          expires_at TIMESTAMP NOT NULL,
+          used INTEGER DEFAULT 0
+        )`
+      : `CREATE TABLE IF NOT EXISTS password_reset_tokens (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          token TEXT UNIQUE NOT NULL,
+          expires_at DATETIME NOT NULL,
+          used INTEGER DEFAULT 0
+        )`;
+    await dbRun(resetTokensSchema);
 
     // Seed initial products if table is empty
     const prodCount = await dbGet("SELECT COUNT(*) as count FROM products");
@@ -385,6 +403,40 @@ const dbHelpers = {
     dbGet("SELECT is_active FROM users WHERE id=?", [id]).then(u =>
       dbRun("UPDATE users SET is_active=? WHERE id=?", [u.is_active ? 0 : 1, id])
     ),
+
+  getUserByEmail: (email) =>
+    dbGet("SELECT * FROM users WHERE LOWER(email)=LOWER(?) AND is_active=1", [email.trim()]),
+
+  updateUserProfile: (id, name, username, email) =>
+    dbRun(
+      "UPDATE users SET name=?, username=?, email=? WHERE id=?",
+      [name, username, email ? email.trim() : null, id]
+    ),
+
+  updateUserPassword: (id, passwordHash) =>
+    dbRun(
+      "UPDATE users SET password_hash=? WHERE id=?",
+      [passwordHash, id]
+    ),
+
+  createResetToken: (userId, token, expiresAt) => {
+    const expiresStr = expiresAt instanceof Date ? expiresAt.toISOString() : expiresAt;
+    return dbRun(
+      "INSERT INTO password_reset_tokens (user_id, token, expires_at, used) VALUES (?, ?, ?, 0)",
+      [userId, token, expiresStr]
+    );
+  },
+
+  validateResetToken: async (token) => {
+    const row = await dbGet("SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0", [token]);
+    if (!row) return null;
+    const expiry = new Date(row.expires_at);
+    if (expiry < new Date()) return null;
+    return row;
+  },
+
+  markTokenAsUsed: (token) =>
+    dbRun("UPDATE password_reset_tokens SET used = 1 WHERE token = ?", [token]),
 
   // ── Reports ───────────────────────────────────────────────
   reportSummary: async () => {

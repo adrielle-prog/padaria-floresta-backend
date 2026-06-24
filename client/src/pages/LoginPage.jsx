@@ -13,6 +13,15 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [serverReady, setServerReady] = useState(false);
 
+  // Forgot password states
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState('');
+  const [forgotError, setForgotError] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+  const API_BASE = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000`;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -24,6 +33,32 @@ export default function LoginPage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotSuccess('');
+
+    if (!forgotEmail.trim()) return setForgotError('Preencha o e-mail.');
+    
+    setForgotLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao solicitar redefinição.');
+      }
+      setForgotSuccess('Instruções enviadas! Verifique seu e-mail (e a pasta de spam).');
+    } catch (err) {
+      setForgotError(err.message);
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -53,47 +88,104 @@ export default function LoginPage() {
 
         <div className="login-divider" />
 
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="form-group">
-            <label htmlFor="login-username">Usuário</label>
-            <input
-              id="login-username"
-              type="text"
-              className="form-control"
-              value={username}
-              onChange={e => { setUsername(e.target.value); setError(''); }}
-              placeholder="ex: admin"
-              autoComplete="username"
-              autoFocus
-            />
-          </div>
+        {showForgot ? (
+          <form onSubmit={handleForgotSubmit} className="login-form">
+            <h3 style={{ fontSize: '1.15rem', color: 'var(--color-primary)', marginBottom: '0.5rem', fontFamily: 'var(--font-main)', fontWeight: 600 }}>
+              ✉️ Recuperar Senha
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-mid)', marginBottom: '1.25rem', lineHeight: '1.4' }}>
+              Digite seu e-mail cadastrado e enviaremos um link de recuperação.
+            </p>
 
-          <div className="form-group">
-            <label htmlFor="login-password">Senha</label>
-            <div className="login-pass-wrap">
+            <div className="form-group">
+              <label htmlFor="forgot-email">E-mail Cadastrado</label>
               <input
-                id="login-password"
-                type={showPass ? 'text' : 'password'}
+                id="forgot-email"
+                type="email"
                 className="form-control"
-                value={password}
-                onChange={e => { setPassword(e.target.value); setError(''); }}
-                placeholder="••••••••"
-                autoComplete="current-password"
+                value={forgotEmail}
+                onChange={e => { setForgotEmail(e.target.value); setForgotError(''); }}
+                placeholder="ex: seu-email@gmail.com"
+                required
+                autoFocus
               />
-              <button type="button" className="login-pass-toggle" onClick={() => setShowPass(v => !v)}>
-                {showPass ? '🙈' : '👁️'}
+            </div>
+
+            {forgotError && (
+              <div className="login-error">⚠️ {forgotError}</div>
+            )}
+            {forgotSuccess && (
+              <div style={{
+                background: 'rgba(46,204,113,.1)',
+                border: '1px solid rgba(46,204,113,.3)',
+                borderRadius: 'var(--r-sm)',
+                color: '#2ecc71',
+                padding: '.6rem .9rem',
+                fontSize: '.85rem',
+                lineHeight: '1.4',
+                marginBottom: '0.5rem'
+              }}>
+                ✅ {forgotSuccess}
+              </div>
+            )}
+
+            <button type="submit" className="btn btn-primary login-submit" disabled={forgotLoading || !!forgotSuccess}>
+              {forgotLoading ? '⏳ Enviando…' : 'Enviar Link'}
+            </button>
+            
+            <button type="button" onClick={() => { setShowForgot(false); setForgotEmail(''); setForgotSuccess(''); setForgotError(''); }} className="btn btn-secondary login-submit" style={{ marginTop: '0.5rem' }}>
+              Voltar para o Login
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="login-form">
+            <div className="form-group">
+              <label htmlFor="login-username">Usuário</label>
+              <input
+                id="login-username"
+                type="text"
+                className="form-control"
+                value={username}
+                onChange={e => { setUsername(e.target.value); setError(''); }}
+                placeholder="ex: admin"
+                autoComplete="username"
+                autoFocus
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="login-password">Senha</label>
+              <div className="login-pass-wrap">
+                <input
+                  id="login-password"
+                  type={showPass ? 'text' : 'password'}
+                  className="form-control"
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError(''); }}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                />
+                <button type="button" className="login-pass-toggle" onClick={() => setShowPass(v => !v)}>
+                  {showPass ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right', marginTop: '0.2rem', marginBottom: '0.8rem' }}>
+              <button type="button" onClick={() => { setShowForgot(true); setError(''); }} className="login-forgot-link">
+                Esqueci minha senha
               </button>
             </div>
-          </div>
 
-          {error && (
-            <div className="login-error">⚠️ {error}</div>
-          )}
+            {error && (
+              <div className="login-error">⚠️ {error}</div>
+            )}
 
-          <button type="submit" className="btn btn-primary login-submit" disabled={loading}>
-            {loading ? '⏳ Entrando…' : '→ Entrar'}
-          </button>
-        </form>
+            <button type="submit" className="btn btn-primary login-submit" disabled={loading}>
+              {loading ? '⏳ Entrando…' : '→ Entrar'}
+            </button>
+          </form>
+        )}
       </div>
 
       <style>{`
@@ -203,6 +295,20 @@ export default function LoginPage() {
           font-size: 1rem;
           margin-top: .5rem;
           letter-spacing: .03em;
+        }
+        .login-forgot-link {
+          background: none;
+          border: none;
+          color: var(--text-low);
+          font-family: var(--font-main);
+          font-size: 0.82rem;
+          cursor: pointer;
+          transition: color var(--t-fast);
+          padding: 0;
+          text-decoration: underline;
+        }
+        .login-forgot-link:hover {
+          color: var(--color-primary);
         }
       `}</style>
     </div>

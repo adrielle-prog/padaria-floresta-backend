@@ -5,7 +5,9 @@ const cors = require('cors');
 const os = require('os');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const db = require('./db');
+const { sendPasswordResetEmail } = require('./email');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -61,14 +63,112 @@ app.post('/api/auth/login', async (req, res) => {
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES }
     );
-    res.json({ token, user: { id: user.id, name: user.name, username: user.username, role: user.role } });
+    res.json({ token, user: { id: user.id, name: user.name, username: user.username, role: user.role, email: user.email } });
   } catch (e) {
     res.status(500).json({ error: 'Erro ao autenticar.' });
   }
 });
 
-app.get('/api/auth/me', authenticate, (req, res) => {
-  res.json(req.user);
+app.get('/api/auth/me', authenticate, async (req, res) => {
+  try {
+    const user = await db.getUserByUsername(req.user.username);
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
+    res.json({
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      role: user.role,
+      email: user.email
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Erro ao buscar perfil.' });
+  }
+});
+
+app.put('/api/auth/update-profile', authenticate, async (req, res) => {
+  const { name, username, email } = req.body;
+  const userId = req.user.id;
+  if (!name?.trim() || !username?.trim())
+    return res.status(400).json({ error: 'Nome e usuário são obrigatórios.' });
+  try {
+    // Verificar se o username já está em uso por outro usuário
+    const existingUser = await db.getUserByUsername(username.trim());
+    if (existingUser && existingUser.id !== userId) {
+      return res.status(400).json({ error: 'Nome de usuário já está em uso.' });
+    }
+    if (email?.trim()) {
+      const existingEmail = await db.getUserByEmail(email.trim());
+      if (existingEmail && existingEmail.id !== userId) {
+        return res.status(400).json({ error: 'E-mail já está associado a outra conta.' });
+      }
+    }
+    await db.updateUserProfile(userId, name.trim(), username.trim().toLowerCase(), email?.trim() || null);
+    res.json({ message: 'Perfil atualizado com sucesso!' });
+  } catch (e) {
+    res.status(500).json({ error: 'Erro ao atualizar perfil.' });
+  }
+});
+
+app.put('/api/auth/change-password', authenticate, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user.id;
+  if (!currentPassword || !newPassword)
+    return res.status(400).json({ error: 'Senha atual e nova senha são obrigatórias.' });
+  if (newPassword.length < 6)
+    return res.status(400).json({ error: 'A nova senha deve ter no mínimo 6 caracteres.' });
+  try {
+    const user = await db.getUserByUsername(req.user.username);
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) return res.status(400).json({ error: 'Senha atual incorreta.' });
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await db.updateUserPassword(userId, newHash);
+    res.json({ message: 'Senha alterada com sucesso!' });
+  } catch (e) {
+    res.status(500).json({ error: 'Erro ao alterar a senha.' });
+  }
+});
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email?.trim())
+    return res.status(400).json({ error: 'E-mail é obrigatório.' });
+  try {
+    const user = await db.getUserByEmail(email.trim());
+    if (!user) {
+      // Retornar sucesso genérico por motivos de segurança
+      return res.json({ message: 'Se o e-mail estiver cadastrado, um link de recuperação será enviado.' });
+    }
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 3600000); // 1 hora
+    await db.createResetToken(user.id, token, expiresAt);
+    const origin = req.get('origin') || process.env.APP_URL || 'http://localhost:5173';
+    await sendPasswordResetEmail(email.trim(), token, origin);
+    res.json({ message: 'Se o e-mail estiver cadastrado, um link de recuperação será enviado.' });
+  } catch (e) {
+    console.error('Erro forgot password:', e);
+    res.status(500).json({ error: 'Erro ao processar solicitação.' });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword)
+    return res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
+  if (newPassword.length < 6)
+    return res.status(400).json({ error: 'A nova senha deve ter no mínimo 6 caracteres.' });
+  try {
+    const tokenRow = await db.validateResetToken(token);
+    if (!tokenRow) {
+      return res.status(400).json({ error: 'Token de recuperação inválido ou expirado.' });
+    }
+    const hash = await bcrypt.hash(newPassword, 10);
+    await db.updateUserPassword(tokenRow.user_id, hash);
+    await db.markTokenAsUsed(token);
+    res.json({ message: 'Senha redefinida com sucesso! Faça login com a nova senha.' });
+  } catch (e) {
+    res.status(500).json({ error: 'Erro ao redefinir a senha.' });
+  }
 });
 
 // ── User Management (gerente only) ────────────────────────────────────────────
