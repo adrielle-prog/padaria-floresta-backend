@@ -22,9 +22,22 @@ async function sendPasswordResetEmail(email, token, appUrl = 'http://localhost:5
     return { devMode: true, link: resetLink };
   }
 
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const hostname = process.env.SMTP_HOST || 'smtp.gmail.com';
   const port = parseInt(process.env.SMTP_PORT || '465', 10);
   const secure = port === 465;
+
+  // Resolve hostname to IPv4 explicitly — Render free tier blocks IPv6 outbound
+  let host = hostname;
+  try {
+    const { resolve4 } = require('dns').promises;
+    const addresses = await resolve4(hostname);
+    if (addresses && addresses.length > 0) {
+      host = addresses[0];
+      console.log(`SMTP: resolved ${hostname} → ${host} (IPv4)`);
+    }
+  } catch (dnsErr) {
+    console.warn('SMTP DNS resolve4 failed, using hostname directly:', dnsErr.message);
+  }
 
   const transporter = nodemailer.createTransport({
     host,
@@ -34,10 +47,10 @@ async function sendPasswordResetEmail(email, token, appUrl = 'http://localhost:5
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
-    connectionTimeout: 10000, // 10s
-    greetingTimeout: 10000,   // 10s
-    socketTimeout: 15000,     // 15s
-    family: 4                  // Force IPv4
+    tls: { servername: hostname }, // Validate TLS cert against original hostname
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
 
   const mailOptions = {
