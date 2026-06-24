@@ -32,7 +32,8 @@ async function sendPasswordResetEmail(email, token, appUrl = 'http://localhost:5
     },
     connectionTimeout: 10000, // 10s
     greetingTimeout: 10000,   // 10s
-    socketTimeout: 15000      // 15s
+    socketTimeout: 15000,     // 15s
+    family: 4                  // Force IPv4
   });
 
   const mailOptions = {
